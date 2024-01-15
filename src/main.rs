@@ -1,41 +1,83 @@
-use std::env;
+use std::{env, fs};
+
+#[derive(Debug)]
+enum Units {
+    // Bytes,
+    Kilobytes,
+    Megabytes,
+    Gigabytes,
+    //Terabytes,
+}
+
+/* 
+impl Units {
+    fn to_string(&self) -> String {
+        match self {
+            //Units::Bytes => String::from("bytes"),
+            Units::Kilobytes => String::from("kilobytes"),
+            Units::Megabytes => String::from("megabytes"),
+            Units::Gigabytes => String::from("megabytes"),
+            //Units::Terabytes => String::from("terabytes"),
+        }
+    }
+}
+*/
 
 #[derive(Debug)]
 struct FSize {
     size: u64,
-    unit: String,
+    units: Units,
 }
 
-enum FileSize {
-    Bytes(u64),
-    Kilobytes(u64),
-    Megabytes(u64),
-    Gigabytes(u64),
-    Terabytes(u64),
-}
+impl FSize {
+    fn to_bytes(&self) -> f64 {
+        let FSize {size, units} = self;
+        let nb = *size as f64;
+        let bytes = match units {
+            // Units::Bytes => nb,
+            Units::Kilobytes => nb * 1000f64,
+            Units::Megabytes => nb * 1_000_000f64,
+            Units::Gigabytes => nb * 1_000_000_000f64,
+            // Units::Terabytes => nb * 1_000_000_000_000f64, 
+        };
+        bytes
+    }
 
-impl FileSize {
-    fn format_size(&self) -> String {
-        match self {
-            FileSize::Bytes(bytes) => convert(*bytes),
-            FileSize::Kilobytes(kb) => convert(*kb * 1000),
-            FileSize::Megabytes(mb) => convert(*mb * 1000 * 1000),
-            FileSize::Gigabytes(gb) => convert(*gb * 1000 * 1000 * 1000),
-            FileSize::Terabytes(tb) => convert(*tb * 1000 * 1000 * 1000 * 1000),
+    fn to_sizes(&self) -> Vec<String> {
+        let powers: Vec<(f64, String)> = vec![
+            (1., String::from("bytes")),
+            (1_000., String::from("kb")),
+            (1_000_000., String::from("mb")),
+            (1_000_000_000., String::from("gb")),
+        ];
+        let bytes = self.to_bytes();
+        let res: Vec<String> = powers.into_iter().map(|(p, u)| { 
+            let sz = bytes / p;
+            format!("{:.2} {}", sz, u)
+        }).collect();
+        res
+    }
+
+    fn to_fsizes(&self) -> FSizes {
+        let sizes = self.to_sizes();
+        FSizes { 
+            bytes: String::from(&sizes[0]), 
+            kilobytes: String::from(&sizes[1]), 
+            megabytes: String::from(&sizes[2]), 
+            gigabytes: String::from(&sizes[3]) 
         }
     }
 }
 
-fn convert(size_in_bytes: u64) -> String {
-    match size_in_bytes as u64 {
-        0..=999 => format!("{} bytes", size_in_bytes as f64),
-        1000..=999_999 => format!("{:.2} KB", size_in_bytes as f64 / 1000.0),
-        1_000_000..=999_999_999 => format!("{:.2} MB", size_in_bytes as f64 / 1_000_000.0),
-        1_000_000_000..=999_999_999_999 => format!("{:.2} GB", size_in_bytes as f64 / 1_000_000_000.0),
-        _ => format!("{:.2} TB", size_in_bytes as f64 / 1_000_000_000_000.0),
-    }   
-}
 
+#[derive(Debug)]
+struct FSizes {
+    bytes: String,
+    kilobytes: String,
+    megabytes: String,
+    gigabytes: String,
+    // terabytes: String,
+}
 
 
 fn main() {
@@ -44,24 +86,21 @@ fn main() {
     // The first argument is the size and the second is the unit
     if args.len() != 3 {
         println!("args.len() is {}", args.len());
-        println!("Please provide a valid size : <positive integer> <unit> (unit is either 'kb', 'mb', 'gb' otr 'tb' case insensitive)");
+        println!("Please provide a valid size : <positive integer> <unit> (unit is either 'kb', 'mb', or 'gb' (case insensitive)");
         return ;
     } 
 
-    println!("Size is {}", args[1]);
-    println!("Unit is {}", args[2]);
-
-    let size = 251234567890000;
-    let filesize = match size {
-        0..=999 => FileSize::Bytes(size),
-        1000..=999_999 => FileSize::Kilobytes(size / 1000),
-        1_000_000..=999_999_999 => FileSize::Megabytes(size / 1_000_000),
-        1_000_000_000..=999_999_999_999 => FileSize::Gigabytes(size / 1_000_000_000),
-        _ => FileSize::Terabytes(size / 1_000_000_000_000),
+    let size = String::from(&args[1]).parse::<u64>().unwrap();
+    let units_str = String::from(&args[2]);
+    let units = match units_str[0..2].to_lowercase().as_str() {
+        "kb" => Units::Kilobytes,
+        "mb" => Units::Megabytes,
+        "gb" => Units::Gigabytes,
+        _ => panic!("Valid units are either kb, mb or gb"),
     };
 
-    println!("File size: {}", filesize.format_size());
-
-    println!("File size: {}", convert(size));
+    let fsize = FSize {size, units};
+    println!("{:?}", fsize);
+    println!("{:?}", fsize.to_fsizes());
 }
 
